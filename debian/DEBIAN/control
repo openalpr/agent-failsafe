@@ -3,6 +3,6 @@ Version: 1.0.1-20191117104820
 Section: web
 Priority: optional
 Architecture: all
-Depends: debconf, python3, python3-tz, python3-pip
+Depends: debconf, python3, python3-tz
 Maintainer: Matthew Hill <matthill@openalpr.com>
 Description: OpenALPR Agent Failsafe

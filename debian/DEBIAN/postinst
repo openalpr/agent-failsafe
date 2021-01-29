@@ -4,7 +4,7 @@ set -e
 # Source debconf library.
 . /usr/share/debconf/confmodule
 
-pip3 install -r /usr/share/openalpr-agent-failsafe/requirements.txt
+#pip3 install -r /usr/share/openalpr-agent-failsafe/requirements.txt
 update-rc.d openalpr-agent-failsafe defaults 95 > /dev/null
 
 invoke-rc.d openalpr-agent-failsafe restart
