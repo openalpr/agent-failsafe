@@ -12,7 +12,7 @@
 BASE_DIR=/usr/share/openalpr-agent-failsafe
 
 DAEMON=/usr/bin/python3
-DAEMON_OPTS="/usr/share/openalpr-agent-failsafe/openalpr_agent_failsafe.py --max_time_restart_seconds 15"
+DAEMON_OPTS="/usr/share/openalpr-agent-failsafe/openalpr_agent_failsafe.py --max_time_restart_seconds 15 --min_agent_uptime 300"
 PIDFILE=/var/run/openalpr-agent-failsafe.pid
 USER=root
 

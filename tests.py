@@ -15,6 +15,7 @@ JSON_TEMPLATE = {
    "agent_type" : "alprd",
    "openalpr_version" : "2.8.101",
    "system_uptime_seconds" : 514018,
+    "daemon_uptime_seconds" : 600,
    "timestamp" : 1611078298405,
    "video_streams" : [
       {
@@ -41,6 +42,7 @@ JSON_TEMPLATE = {
 }
 
 SLEEP_STEP_TIME = 0.05
+MIN_AGENT_UPTIME = 300
 
 logger = logging.getLogger('OpenALPR Agent Failsafe Log')
 
@@ -75,7 +77,7 @@ def forwards_time_epoch_func():
 class TestOutageChecker(unittest.TestCase):
 
     def test_missing_file(self):
-        test_checker = OutageChecker()
+        test_checker = OutageChecker(MIN_AGENT_UPTIME)
         test_checker.INFO_FILE = '/bogus/file/doesnot/exist'
 
         # if the file doesn't exist, don't report an outage
@@ -83,7 +85,7 @@ class TestOutageChecker(unittest.TestCase):
 
 
     def test_bad_file_content(self):
-        test_checker = OutageChecker()
+        test_checker = OutageChecker(MIN_AGENT_UPTIME)
         test_checker.INFO_FILE = TEMP_JSON
 
         with open(TEMP_JSON, 'w') as outf:
@@ -95,7 +97,7 @@ class TestOutageChecker(unittest.TestCase):
     def test_timeout_good_to_bad(self):
         # Cameras start connected then fail
 
-        test_checker = OutageChecker()
+        test_checker = OutageChecker(MIN_AGENT_UPTIME)
         test_checker.INFO_FILE = TEMP_JSON
 
         json_data = copy.deepcopy(JSON_TEMPLATE)
@@ -123,7 +125,7 @@ class TestOutageChecker(unittest.TestCase):
         self.assertGreaterEqual(test_checker.get_outage_seconds(), SLEEP_STEP_TIME)
 
     def test_timeout_bad_to_good(self):
-        test_checker = OutageChecker()
+        test_checker = OutageChecker(MIN_AGENT_UPTIME)
         test_checker.INFO_FILE = TEMP_JSON
 
         json_data = copy.deepcopy(JSON_TEMPLATE)
@@ -153,7 +155,7 @@ class TestOutageChecker(unittest.TestCase):
 
 
     def test_reset(self):
-        test_checker = OutageChecker()
+        test_checker = OutageChecker(MIN_AGENT_UPTIME)
         test_checker.INFO_FILE = TEMP_JSON
 
         json_data = copy.deepcopy(JSON_TEMPLATE)
@@ -180,7 +182,7 @@ class TestOutageChecker(unittest.TestCase):
 
 
     def test_removing_and_adding_camera(self):
-        test_checker = OutageChecker()
+        test_checker = OutageChecker(MIN_AGENT_UPTIME)
         test_checker.INFO_FILE = TEMP_JSON
 
         json_data = copy.deepcopy(JSON_TEMPLATE)
@@ -220,7 +222,7 @@ class TestOutageChecker(unittest.TestCase):
 
     def test_backwards_time_jump(self):
 
-        test_checker = OutageChecker()
+        test_checker = OutageChecker(MIN_AGENT_UPTIME)
         test_checker.INFO_FILE = TEMP_JSON
 
         json_data = copy.deepcopy(JSON_TEMPLATE)
@@ -253,7 +255,7 @@ class TestOutageChecker(unittest.TestCase):
 
     def test_forward_time_jump(self):
 
-        test_checker = OutageChecker()
+        test_checker = OutageChecker(MIN_AGENT_UPTIME)
         test_checker.INFO_FILE = TEMP_JSON
 
         json_data = copy.deepcopy(JSON_TEMPLATE)
@@ -273,6 +275,30 @@ class TestOutageChecker(unittest.TestCase):
         self.assertAlmostEqual(test_checker.get_outage_seconds(), 0.0, 3)
         self.assertEqual(test_checker.tracked_camera_count(), 2)
 
+    def test_daemon_uptime(self):
+        # Cameras start connected then fail
+
+        test_checker = OutageChecker(MIN_AGENT_UPTIME)
+        test_checker.INFO_FILE = TEMP_JSON
+
+        json_data = copy.deepcopy(JSON_TEMPLATE)
+        json_data = set_fps(25.0, 25.0, json_data)
+
+        self.assertEqual(test_checker.get_outage_seconds(), 0)
+
+        json_data = set_fps(0.0, 25.0, json_data)
+        self.assertAlmostEqual(test_checker.get_outage_seconds(), 0.0, 3)
+        time.sleep(SLEEP_STEP_TIME)
+        self.assertGreaterEqual(test_checker.get_outage_seconds(), SLEEP_STEP_TIME)
+
+        low_uptime = copy.deepcopy(json_data)
+        low_uptime['daemon_uptime_seconds'] = 250
+        write_file(low_uptime, TEMP_JSON)
+        self.assertAlmostEqual(test_checker.get_outage_seconds(), 0.0, 3)
+
+        json_data = set_fps(0.0, 25.0, json_data)
+        time.sleep(SLEEP_STEP_TIME)
+        self.assertGreaterEqual(test_checker.get_outage_seconds(), SLEEP_STEP_TIME)
 
 if __name__ == '__main__':
     handler = logging.StreamHandler()

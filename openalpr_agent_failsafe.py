@@ -10,8 +10,10 @@ from datetime import datetime
 
 logger = logging.getLogger('OpenALPR Agent Failsafe Log')
 
+
 class OutageChecker():
-    def __init__(self):
+    def __init__(self, min_agent_uptime):
+        self.min_agent_uptime = min_agent_uptime
         self.tracked_cameras = {}
         self.INFO_FILE = '/var/lib/openalpr/openalpr_system_status.json'
 
@@ -41,6 +43,8 @@ class OutageChecker():
 
             with open(self.INFO_FILE, 'r') as info_file:
                 info_data = json.load(info_file)
+
+                daemon_uptime_seconds = info_data["daemon_uptime_seconds"]
 
                 alpr_cameras = []
                 for video_stream in info_data['video_streams']:
@@ -87,6 +91,11 @@ class OutageChecker():
 
                         if tracked_cam['cumulative_outage'] > 1.0:
                             logger.info(f"Tracking camera {camera_id} with {tracked_cam['cumulative_outage']:.2f}s outage")
+
+                if max_outage > 0 and daemon_uptime_seconds < self.min_agent_uptime:
+                    logger.info(f"Reporting no downtime because agent has been up for {daemon_uptime_seconds:.2f}s which is < the minimum {self.min_agent_uptime:.2f}s")
+                    return 0.0
+
                 return max_outage
 
         except json.decoder.JSONDecodeError:
@@ -116,6 +125,9 @@ if __name__ == "__main__":
     parser.add_argument('-m', '--max_time_restart_seconds', type=int, action='store', default=10,
                         help="The maximum amount of time to allow 0 FPS connections before restarting the agent")
 
+    parser.add_argument('-a', '--min_agent_uptime', type=int, action='store', default=300,
+                        help="The minimum amount of time the agent must be up before allowing a restart ")
+
     options = parser.parse_args()
 
 
@@ -139,7 +151,7 @@ if __name__ == "__main__":
 
     logger.info("Script initialized")
 
-    oc = OutageChecker()
+    oc = OutageChecker(options.min_agent_uptime)
 
     while True:
         try:
