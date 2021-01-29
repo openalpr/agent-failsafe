@@ -85,6 +85,8 @@ class OutageChecker():
                         if tracked_cam['cumulative_outage'] > max_outage:
                             max_outage = tracked_cam['cumulative_outage']
 
+                        if tracked_cam['cumulative_outage'] > 1.0:
+                            logger.info(f"Tracking camera {camera_id} with {tracked_cam['cumulative_outage']:.2f}s outage")
                 return max_outage
 
         except json.decoder.JSONDecodeError:
